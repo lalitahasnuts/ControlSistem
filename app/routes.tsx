@@ -12,17 +12,19 @@ import Users from '../app/src/components/Users';
 import Profile from '../app/src/components/UserProfile';
 import NotFound from '../app/src/components/NotFound';
 
-const PrivateRoute = ({ path, component: Component }) => {
+// Корректировка компонента PrivateRoute
+const PrivateRoute = ({ path, element }) => {
   const { currentUser } = useAuth();
 
   return (
     <Route
       path={path}
-      element={currentUser ? <Component /> : <Login />}
+      element={currentUser ? element : <Login />}
     />
   );
 };
 
+// Составляем маршруты
 const RoutesConfig = () => {
   return (
     <Routes>

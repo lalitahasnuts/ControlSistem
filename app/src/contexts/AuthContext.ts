@@ -45,5 +45,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// 👈 Удобный хук для использования контекста авторизации
 export const useAuth = () => React.useContext(AuthContext)!;
