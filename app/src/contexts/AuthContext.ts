@@ -9,17 +9,12 @@ interface AuthResponse {
   logout(): void;
 }
 
-// 🔴 Export added here
 export const AuthContext = React.createContext<AuthResponse | undefined>(undefined);
 
-// 👈 Компонент-поставщик контекста авторизации
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // 👉 Хранение текущего пользователя и метода обновления
   const [currentUser, setCurrentUser] = React.useState<any>();
 
-  // 👉 Заглушка для логина
   const login = async (email: string, password: string) => {
-    // TODO: тут должна происходить отправка данных на сервер и получение токена
     console.log(`Logging in with email=${email}`);
     setTimeout(() => {
       // имитируем успешный логин
@@ -27,7 +22,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, 1000); // задержка для имитации сетевого запроса
   };
 
-  // 👉 Заглушка для регистрации
   const signup = async (email: string, name: string, password: string) => {
     // TODO: тут должна происходить регистрация нового пользователя
     console.log(`Signing up with email=${email}, name=${name}`);
@@ -44,7 +38,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(undefined); // сбрасываем текущего пользователя
   };
 
-  // 👈 Возвращаем Provider, который обеспечивает доступ к нашему контексту
   return (
     <AuthContext.Provider value={{currentUser, login, signup, logout}}>
       {children}
