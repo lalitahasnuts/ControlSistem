@@ -13,11 +13,17 @@ import Sidebar from './components/Sidebar';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
 
-// Компонент для защищенных маршрутов
+
+// Временный компонент - всегда разрешаем доступ
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // return currentUser ? <>{children}</> : <Navigate to="/login" />; // Закомментируйте эту строку
+    return <>{children}</>; // Всегда показываем содержимое
+  };
+// Компонент для защищенных маршрутов
+/*const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
   return currentUser ? <>{children}</> : <Navigate to="/login" />;
-};
+};*/
 
 // Основной лейаут приложения
 const AppLayout: React.FC = () => {
