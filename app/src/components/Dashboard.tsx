@@ -1,35 +1,33 @@
-// src/components/Dashboard.tsx
-import * as React from 'react';
-import { useProjects, useDefects } from '../hooks/useData';
-import { useEffect } from 'react';
+import React from 'react';
 
-const Dashboard = () => {
-  const projects = useProjects(); // Специфический хук для проектов
-  const defects = useDefects('someProjectId'); // Специфический хук для дефектов конкретного проекта
-
-  // Тут можем использовать эффект, если нужно
-  useEffect(() => {
-    // Дополнительная логика, если требуется
-  }, []);
-
+const Dashboard: React.FC = () => {
   return (
-    <main className="ml-64 mt-16 p-4 bg-gray-100 min-h-screen">
-      {/* Сюда выводится общий список проектов и дефектов */}
-      <h1 className="text-2xl font-semibold mb-4">Панель мониторинга</h1>
-      <p>Обзор всех текущих проектов и зарегистрированных дефектов:</p>
+    <div>
+      <h1>Дашборд</h1>
+      <p>Добро пожаловать в систему управления дефектами строительных объектов</p>
       
-      <ul>
-        {projects.map((project) => (
-          <li key={project.id}>{project.name}</li>
-        ))}
-      </ul>
-
-      <ul>
-        {defects.map((defect) => (
-          <li key={defect.id}>{defect.description}</li>
-        ))}
-      </ul>
-    </main>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '30px' }}>
+        <div style={{ background: '#f0f2f5', padding: '20px', borderRadius: '8px' }}>
+          <h3>Проекты</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>5</p>
+        </div>
+        
+        <div style={{ background: '#f0f2f5', padding: '20px', borderRadius: '8px' }}>
+          <h3>Дефекты</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>12</p>
+        </div>
+        
+        <div style={{ background: '#f0f2f5', padding: '20px', borderRadius: '8px' }}>
+          <h3>В работе</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>8</p>
+        </div>
+        
+        <div style={{ background: '#f0f2f5', padding: '20px', borderRadius: '8px' }}>
+          <h3>Решено</h3>
+          <p style={{ fontSize: '24px', fontWeight: 'bold' }}>4</p>
+        </div>
+      </div>
+    </div>
   );
 };
 

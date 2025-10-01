@@ -1,28 +1,19 @@
-import { useState, useEffect } from 'react';
-import * as React from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 
-const Header = () => {
+const Header: React.FC = () => {
   const { currentUser, logout } = useAuth();
 
   return (
-    <header className="bg-gray-800 text-white p-4">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/dashboard" className="font-bold">Строительный Дефект-менеджмент</Link>
-        <nav>
-          {currentUser ? (
-            <>
-              <span>{`Привет, ${currentUser.name}`}</span> · 
-              <button onClick={logout}>Выход</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login">Войти</Link> · 
-              <Link to="/signup">Регистрация</Link>
-            </>
-          )}
-        </nav>
+    <header className="header">
+      <div className="header-left">
+        <h1>Система управления дефектами</h1>
+      </div>
+      <div className="header-right">
+        <span>Добро пожаловать, {currentUser?.name || currentUser?.email}</span>
+        <button onClick={logout} className="btn" style={{ marginLeft: '20px' }}>
+          Выйти
+        </button>
       </div>
     </header>
   );

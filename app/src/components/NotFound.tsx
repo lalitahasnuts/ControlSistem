@@ -1,8 +1,12 @@
-// src/components/NotFound.tsx
-import * as React from 'react';
+import React from 'react';
 
-const NotFound = () => {
-  return <div>404 - Page Not Found</div>;
+const NotFound: React.FC = () => {
+  return (
+    <div>
+      <h1>404 - Страница не найдена</h1>
+      <p>Запрошенная страница не существует.</p>
+    </div>
+  );
 };
 
 export default NotFound;

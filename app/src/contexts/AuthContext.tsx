@@ -1,5 +1,4 @@
-// src/contexts/AuthContext.ts
-import * as React from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 
 interface User {
   email: string;
@@ -14,14 +13,14 @@ interface AuthResponse {
   logout(): void;
 }
 
-export const AuthContext = React.createContext<AuthResponse | undefined>(undefined);
+export const AuthContext = createContext<AuthResponse | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = React.useState<User>();
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [currentUser, setCurrentUser] = useState<User>();
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<void> => {
     console.log(`Logging in with email=${email}`);
-    return new Promise<void>((resolve) => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         setCurrentUser({ email, id: '1' });
         resolve();
@@ -29,9 +28,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const signup = async (email: string, name: string, password: string) => {
+  const signup = async (email: string, name: string, password: string): Promise<void> => {
     console.log(`Signing up with email=${email}, name=${name}`);
-    return new Promise<void>((resolve) => {
+    return new Promise((resolve) => {
       setTimeout(() => {
         setCurrentUser({ email, name, id: '1' });
         resolve();
@@ -39,12 +38,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const logout = () => {
+  const logout = (): void => {
     console.log('Logging out...');
     setCurrentUser(undefined);
   };
 
-  const value = {
+  const value: AuthResponse = {
     currentUser,
     login,
     signup,
@@ -57,11 +56,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => {
-  const context = React.useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};

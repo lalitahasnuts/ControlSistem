@@ -1,17 +1,32 @@
-import * as React from 'react';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-const Sidebar = () => {
+const Sidebar: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const menuItems = [
+    { path: '/dashboard', label: 'Дашборд' },
+    { path: '/projects', label: 'Проекты' },
+    { path: '/defects', label: 'Дефекты' },
+    { path: '/reports', label: 'Отчеты' },
+    { path: '/users', label: 'Пользователи' },
+  ];
+
   return (
-    <aside className="bg-gray-800 text-white h-screen w-64 py-4 fixed top-0 left-0 overflow-y-auto z-10">
-      <ul className="space-y-4 px-4">
-        <li><Link to="/projects">Проекты</Link></li>
-        <li><Link to="/defects">Дефекты</Link></li>
-        <li><Link to="/reports">Отчеты</Link></li>
-        <li><Link to="/users">Пользователи</Link></li>
-        <li><Link to="/profile">Профиль</Link></li>
+    <nav className="sidebar">
+      <ul className="sidebar-menu">
+        {menuItems.map(item => (
+          <li
+            key={item.path}
+            className={location.pathname === item.path ? 'active' : ''}
+            onClick={() => navigate(item.path)}
+          >
+            {item.label}
+          </li>
+        ))}
       </ul>
-    </aside>
+    </nav>
   );
 };
 
