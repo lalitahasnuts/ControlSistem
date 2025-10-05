@@ -10,7 +10,7 @@ const Header: React.FC = () => {
         <h1>Система управления дефектами</h1>
       </div>
       <div className="header-right">
-        <span>Добро пожаловать, {currentUser?.name || currentUser?.email}</span>
+        <span>Добро пожаловать, {currentUser ? `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email : 'Гость'}</span>
         <button onClick={logout} className="btn" style={{ marginLeft: '20px' }}>
           Выйти
         </button>
