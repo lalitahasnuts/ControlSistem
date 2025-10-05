@@ -10,13 +10,15 @@ import Reports from './components/Reports';
 import Users from './components/Users';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import ProjectDetail from './components/ProjectDetail';
+import DefectDetail from './components/DefectDetail';
+import UserProfile from './components/UserProfile';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
 
 
 // Временный компонент - всегда разрешаем доступ
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // return currentUser ? <>{children}</> : <Navigate to="/login" />; // Закомментируйте эту строку
     return <>{children}</>; // Всегда показываем содержимое
   };
 // Компонент для защищенных маршрутов
@@ -24,28 +26,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { currentUser } = useAuth();
   return currentUser ? <>{children}</> : <Navigate to="/login" />;
 };*/
-
-// Основной лейаут приложения
-const AppLayout: React.FC = () => {
-  return (
-    <div className="app">
-      <Header />
-      <div className="app-body">
-        <Sidebar />
-        <main className="app-content">
-          <Routes>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/defects" element={<Defects />} />
-            <Route path="/projects" element={<Projects />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/" element={<Navigate to="/dashboard" />} />
-          </Routes>
-        </main>
-      </div>
-    </div>
-  );
-};
 
 function App() {
   return (
@@ -55,11 +35,47 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/*" element={
+            <Route path="/dashboard" element={
               <ProtectedRoute>
-                <AppLayout />
+                <Dashboard />
               </ProtectedRoute>
             } />
+            <Route path="/projects" element={
+              <ProtectedRoute>
+                <Projects />
+              </ProtectedRoute>
+            } />
+            <Route path="/projects/:id" element={
+              <ProtectedRoute>
+                <ProjectDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/defects" element={
+              <ProtectedRoute>
+                <Defects />
+              </ProtectedRoute>
+            } />
+            <Route path="/defects/:id" element={
+              <ProtectedRoute>
+                <DefectDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/reports" element={
+              <ProtectedRoute>
+                <Reports />
+              </ProtectedRoute>
+            } />
+            <Route path="/users" element={
+              <ProtectedRoute>
+                <Users />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            } />
+            <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </div>
       </Router>
