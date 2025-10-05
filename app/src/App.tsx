@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { Layout } from 'antd';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './components/Dashboard';
@@ -16,16 +17,42 @@ import UserProfile from './components/UserProfile';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
 
+const { Content } = Layout;
 
 // Временный компонент - всегда разрешаем доступ
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    return <>{children}</>; // Всегда показываем содержимое
-  };
+  return <>{children}</>; // Всегда показываем содержимое
+};
+
 // Компонент для защищенных маршрутов
 /*const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser } = useAuth();
   return currentUser ? <>{children}</> : <Navigate to="/login" />;
 };*/
+
+// Компонент макета с Header и Sidebar
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <Layout style={{ minHeight: '100vh' }}>
+      <Header />
+      <Layout>
+        <Sidebar />
+        <Layout style={{ padding: '0 24px 24px' }}>
+          <Content
+            style={{
+              background: '#fff',
+              padding: 24,
+              margin: 0,
+              minHeight: 280,
+            }}
+          >
+            {children}
+          </Content>
+        </Layout>
+      </Layout>
+    </Layout>
+  );
+};
 
 function App() {
   return (
@@ -33,48 +60,69 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
+            {/* Публичные маршруты без layout */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            
+            {/* Защищенные маршруты с layout */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
-                <Dashboard />
+                <AppLayout>
+                  <Dashboard />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/projects" element={
               <ProtectedRoute>
-                <Projects />
+                <AppLayout>
+                  <Projects />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/projects/:id" element={
               <ProtectedRoute>
-                <ProjectDetail />
+                <AppLayout>
+                  <ProjectDetail />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/defects" element={
               <ProtectedRoute>
-                <Defects />
+                <AppLayout>
+                  <Defects />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/defects/:id" element={
               <ProtectedRoute>
-                <DefectDetail />
+                <AppLayout>
+                  <DefectDetail />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/reports" element={
               <ProtectedRoute>
-                <Reports />
+                <AppLayout>
+                  <Reports />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/users" element={
               <ProtectedRoute>
-                <Users />
+                <AppLayout>
+                  <Users />
+                </AppLayout>
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
               <ProtectedRoute>
-                <UserProfile />
+                <AppLayout>
+                  <UserProfile />
+                </AppLayout>
               </ProtectedRoute>
             } />
+            
+            {/* Перенаправление на dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" />} />
           </Routes>
         </div>
