@@ -1,10 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-
-interface User {
-  email: string;
-  name?: string;
-  id?: string;
-}
+import { User, UserRole } from '../types';
 
 interface AuthResponse {
   currentUser?: User;
@@ -22,7 +17,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log(`Logging in with email=${email}`);
     return new Promise((resolve) => {
       setTimeout(() => {
-        setCurrentUser({ email, id: '1' });
+        setCurrentUser({ 
+          id: '1', 
+          email, 
+          firstName: 'Пользователь',
+          lastName: 'Тестовый',
+          role: UserRole.ADMIN,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
         resolve();
       }, 1000);
     });
@@ -32,7 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     console.log(`Signing up with email=${email}, name=${name}`);
     return new Promise((resolve) => {
       setTimeout(() => {
-        setCurrentUser({ email, name, id: '1' });
+        setCurrentUser({ 
+          id: '1', 
+          email, 
+          firstName: name,
+          lastName: '',
+          role: UserRole.ENGINEER,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
         resolve();
       }, 1000);
     });

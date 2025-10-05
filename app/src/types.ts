@@ -1,20 +1,20 @@
+export enum UserRole {
+  ENGINEER = 'engineer',
+  MANAGER = 'manager',
+  OBSERVER = 'observer',
+  ADMIN = 'admin'
+}
+
 export interface User {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    role: UserRole;
-    isActive: boolean;
-    createdAt: string;
-    updatedAt: string;
-  }
-  
-  export enum UserRole {
-    ENGINEER = 'engineer',
-    MANAGER = 'manager',
-    OBSERVER = 'observer',
-    ADMIN = 'admin'
-  }
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
   
   export interface Project {
     id: string;
