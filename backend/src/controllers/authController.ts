@@ -6,38 +6,42 @@ import { User, UserRole } from '../models/types.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Email и пароль обязательны' 
       });
+      return;
     }
 
     const user = findUserByEmail(email);
     if (!user) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Неверный email или пароль' 
       });
+      return;
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Неверный email или пароль' 
       });
+      return;
     }
 
     if (!user.isActive) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Аккаунт деактивирован' 
       });
+      return;
     }
 
     const token = jwt.sign(
@@ -68,30 +72,33 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, firstName, lastName, role = UserRole.ENGINEER } = req.body;
 
     if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Все поля обязательны' 
       });
+      return;
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Пароль должен содержать минимум 6 символов' 
       });
+      return;
     }
 
     const existingUser = findUserByEmail(email);
     if (existingUser) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Пользователь с таким email уже существует' 
       });
+      return;
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -137,16 +144,17 @@ export const register = async (req: Request, res: Response) => {
   }
 };
 
-export const getCurrentUser = async (req: Request, res: Response) => {
+export const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user?.userId;
     const user = users.find(u => u.id === userId);
     
     if (!user) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Пользователь не найден' 
       });
+      return;
     }
 
     // Не возвращаем пароль в ответе

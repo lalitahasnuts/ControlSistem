@@ -3,15 +3,11 @@ import { defects, projects, users, comments, attachments, generateId, findDefect
 import { Defect, DefectStatus, Priority, Comment, Attachment } from '../models/types.js';
 import multer from 'multer';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Настройка multer для загрузки файлов
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads'));
+    cb(null, path.join(process.cwd(), 'uploads'));
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -21,7 +17,7 @@ const storage = multer.diskStorage({
 
 export const upload = multer({ storage });
 
-export const getAllDefects = async (req: Request, res: Response) => {
+export const getAllDefects = async (req: Request, res: Response): Promise<void> => {
   try {
     const { search, status, priority, projectId } = req.query;
     
@@ -68,16 +64,26 @@ export const getAllDefects = async (req: Request, res: Response) => {
   }
 };
 
-export const getDefectById = async (req: Request, res: Response) => {
+export const getDefectById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID дефекта обязателен' 
+      });
+      return;
+    }
+
     const defect = findDefectById(id);
     
     if (!defect) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Дефект не найден' 
       });
+      return;
     }
 
     const defectWithRelations = {
@@ -99,18 +105,27 @@ export const getDefectById = async (req: Request, res: Response) => {
   }
 };
 
-export const createDefect = async (req: Request, res: Response) => {
+export const createDefect = async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, priority, projectId, assigneeId, dueDate } = req.body;
 
     if (!title || !description || !priority || !projectId || !assigneeId || !dueDate) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Все поля обязательны' 
       });
+      return;
     }
 
     const reporterId = (req as any).user?.userId;
+
+    if (!reporterId) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID репортера обязателен' 
+      });
+      return;
+    }
 
     const newDefect: Defect = {
       id: generateId(),
@@ -148,20 +163,37 @@ export const createDefect = async (req: Request, res: Response) => {
   }
 };
 
-export const updateDefect = async (req: Request, res: Response) => {
+export const updateDefect = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID дефекта обязателен' 
+      });
+      return;
+    }
+
     const { title, description, priority, status, projectId, assigneeId, dueDate } = req.body;
     
     const defectIndex = defects.findIndex(d => d.id === id);
     if (defectIndex === -1) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Дефект не найден' 
       });
+      return;
     }
 
     const existingDefect = defects[defectIndex];
+    if (!existingDefect) {
+      res.status(404).json({ 
+        success: false, 
+        message: 'Дефект не найден' 
+      });
+      return;
+    }
 
     // Обновляем поля
     if (title) existingDefect.title = title;
@@ -193,16 +225,25 @@ export const updateDefect = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteDefect = async (req: Request, res: Response) => {
+export const deleteDefect = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID дефекта обязателен' 
+      });
+      return;
+    }
+
     const defectIndex = defects.findIndex(d => d.id === id);
     if (defectIndex === -1) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Дефект не найден' 
       });
+      return;
     }
 
     defects.splice(defectIndex, 1);
@@ -235,27 +276,46 @@ export const deleteDefect = async (req: Request, res: Response) => {
   }
 };
 
-export const addComment = async (req: Request, res: Response) => {
+export const addComment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID дефекта обязателен' 
+      });
+      return;
+    }
+
     const { content } = req.body;
 
     if (!content) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Текст комментария обязателен' 
       });
+      return;
     }
 
     const defect = findDefectById(id);
     if (!defect) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Дефект не найден' 
       });
+      return;
     }
 
     const authorId = (req as any).user?.userId;
+
+    if (!authorId) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID автора обязателен' 
+      });
+      return;
+    }
 
     const newComment: Comment = {
       id: generateId(),
@@ -283,27 +343,46 @@ export const addComment = async (req: Request, res: Response) => {
   }
 };
 
-export const uploadAttachment = async (req: Request, res: Response) => {
+export const uploadAttachment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID дефекта обязателен' 
+      });
+      return;
+    }
+
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Файл обязателен' 
       });
+      return;
     }
 
     const defect = findDefectById(id);
     if (!defect) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Дефект не найден' 
       });
+      return;
     }
 
     const uploadedById = (req as any).user?.userId;
+
+    if (!uploadedById) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID пользователя обязателен' 
+      });
+      return;
+    }
 
     const newAttachment: Attachment = {
       id: generateId(),

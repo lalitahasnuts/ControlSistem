@@ -11,23 +11,25 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({ 
+    res.status(401).json({ 
       success: false, 
       message: 'Токен доступа отсутствует' 
     });
+    return;
   }
 
   jwt.verify(token, JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ 
+      res.status(403).json({ 
         success: false, 
         message: 'Недействительный токен' 
       });
+      return;
     }
 
     req.user = decoded as { userId: string; email: string; role: string };
@@ -36,19 +38,21 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 };
 
 export const requireRole = (roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         success: false, 
         message: 'Требуется аутентификация' 
       });
+      return;
     }
 
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ 
+      res.status(403).json({ 
         success: false, 
         message: 'Недостаточно прав' 
       });
+      return;
     }
 
     next();

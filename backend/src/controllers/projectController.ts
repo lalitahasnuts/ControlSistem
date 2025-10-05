@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { projects, users, generateId, findProjectById } from '../utils/storage.js';
 import { Project, ProjectStatus } from '../models/types.js';
 
-export const getAllProjects = async (req: Request, res: Response) => {
+export const getAllProjects = async (req: Request, res: Response): Promise<void> => {
   try {
     const projectsWithUsers = projects.map(project => ({
       ...project,
@@ -19,16 +19,26 @@ export const getAllProjects = async (req: Request, res: Response) => {
   }
 };
 
-export const getProjectById = async (req: Request, res: Response) => {
+export const getProjectById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID проекта обязателен' 
+      });
+      return;
+    }
+
     const project = findProjectById(id);
     
     if (!project) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Проект не найден' 
       });
+      return;
     }
 
     const projectWithUsers = {
@@ -46,18 +56,27 @@ export const getProjectById = async (req: Request, res: Response) => {
   }
 };
 
-export const createProject = async (req: Request, res: Response) => {
+export const createProject = async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description, address, startDate, endDate, status = ProjectStatus.PLANNED } = req.body;
 
     if (!name || !description || !address || !startDate || !endDate) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         success: false, 
         message: 'Все поля обязательны' 
       });
+      return;
     }
 
     const managerId = (req as any).user?.userId;
+
+    if (!managerId) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID менеджера обязателен' 
+      });
+      return;
+    }
 
     const newProject: Project = {
       id: generateId(),
@@ -89,33 +108,42 @@ export const createProject = async (req: Request, res: Response) => {
   }
 };
 
-export const updateProject = async (req: Request, res: Response) => {
+export const updateProject = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID проекта обязателен' 
+      });
+      return;
+    }
+
     const { name, description, address, startDate, endDate, status } = req.body;
     
     const projectIndex = projects.findIndex(p => p.id === id);
     if (projectIndex === -1) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Проект не найден' 
       });
+      return;
     }
 
     const existingProject = projects[projectIndex];
-    
-    // Добавляем проверку на существование проекта
     if (!existingProject) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Проект не найден' 
       });
+      return;
     }
 
-    // Обновляем поля с проверкой на undefined
-    if (name !== undefined) existingProject.name = name;
-    if (description !== undefined) existingProject.description = description;
-    if (address !== undefined) existingProject
+    // Обновляем поля
+    if (name) existingProject.name = name;
+    if (description) existingProject.description = description;
+    if (address) existingProject.address = address;
     if (startDate) existingProject.startDate = startDate;
     if (endDate) existingProject.endDate = endDate;
     if (status) existingProject.status = status;
@@ -137,16 +165,25 @@ export const updateProject = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteProject = async (req: Request, res: Response) => {
+export const deleteProject = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     
+    if (!id) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'ID проекта обязателен' 
+      });
+      return;
+    }
+
     const projectIndex = projects.findIndex(p => p.id === id);
     if (projectIndex === -1) {
-      return res.status(404).json({ 
+      res.status(404).json({ 
         success: false, 
         message: 'Проект не найден' 
       });
+      return;
     }
 
     projects.splice(projectIndex, 1);
