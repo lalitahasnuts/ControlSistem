@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
       "target": "ES2020",
-      "module": "ESNext",
+      "module": "commonjs",  // Изменили на commonjs
       "moduleResolution": "node",
       "outDir": "./dist",
       "rootDir": "./src",
@@ -22,8 +22,11 @@
       "noImplicitOverride": true,
       "allowSyntheticDefaultImports": true,
       "baseUrl": ".",
+      "typeRoots": [
+        "./node_modules/@types"  // Добавили typeRoots
+      ],
       "paths": {
-        "*": ["node_modules/*", "types/*"]
+        "*": ["node_modules/*"]  // Упростили paths
       }
     },
     "include": [
@@ -36,9 +39,6 @@
       "uploads",
       "**/*.test.ts",
       "**/*.spec.ts"
-    ],
-    "ts-node": {
-      "esm": true,
-      "experimentalSpecifierResolution": "node"
-    }
+    ]
   }
+  

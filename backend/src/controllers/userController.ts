@@ -3,100 +3,6 @@ import bcrypt from 'bcryptjs';
 import { users, findUserById, generateId } from '../utils/storage.js';
 import { User, UserRole } from '../models/types.js';
 
-export const getAllUsers = async (req: Request, res: Response) => {
-  try {
-    // Не возвращаем пароли в ответе
-    const usersWithoutPasswords = users.map(({ password, ...user }) => user);
-    
-    res.json(usersWithoutPasswords);
-  } catch (error) {
-    console.error('Get all users error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const getUserById = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const user = findUserById(id);
-    
-    if (!user) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Пользователь не найден' 
-      });
-    }
-
-    // Не возвращаем пароль в ответе
-    const { password: _, ...userWithoutPassword } = user;
-
-    res.json(userWithoutPassword);
-  } catch (error) {
-    console.error('Get user by id error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const createUser = async (req: Request, res: Response) => {
-  try {
-    const { email, password, firstName, lastName, role = UserRole.ENGINEER } = req.body;
-
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Все поля обязательны' 
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Пароль должен содержать минимум 6 символов' 
-      });
-    }
-
-    const existingUser = users.find(u => u.email === email);
-    if (existingUser) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Пользователь с таким email уже существует' 
-      });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser: User = {
-      id: generateId(),
-      email,
-      password: hashedPassword,
-      firstName,
-      lastName,
-      role,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    users.push(newUser);
-
-    // Не возвращаем пароль в ответе
-    const { password: _, ...userWithoutPassword } = newUser;
-
-    res.status(201).json(userWithoutPassword);
-  } catch (error) {
-    console.error('Create user error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -110,7 +16,14 @@ export const updateUser = async (req: Request, res: Response) => {
       });
     }
 
-    const existingUser = users[userIndex];
+    const existingUser: User | undefined = users[userIndex];
+    
+    if (!existingUser) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Пользователь не найден' 
+      });
+    }
 
     // Проверяем email на уникальность
     if (email && email !== existingUser.email) {
@@ -123,12 +36,11 @@ export const updateUser = async (req: Request, res: Response) => {
       }
     }
 
-    // Обновляем поля
-    if (email) existingUser.email = email;
-    if (firstName) existingUser.firstName = firstName;
-    if (lastName) existingUser.lastName = lastName;
-    if (role) existingUser.role = role;
-    if (typeof isActive === 'boolean') existingUser.isActive = isActive;
+    // Обновляем поля с проверкой на undefined
+    if (firstName !== undefined) existingUser.firstName = firstName;
+    if (lastName !== undefined) existingUser.lastName = lastName;
+    if (role !== undefined) existingUser.role = role;
+    if (isActive !== undefined) existingUser.isActive = isActive;
     
     // Обновляем пароль если предоставлен
     if (password) {
