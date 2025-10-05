@@ -1,26 +1,16 @@
-import { Router } from 'express';
-import { 
-  getAllDefects, 
-  getDefectById, 
-  createDefect, 
-  updateDefect, 
-  deleteDefect,
-  addComment,
-  uploadAttachment,
-  upload
-} from '../controllers/defectController.js';
-import { authenticateToken } from '../middleware/auth.js';
+import express from 'express';
+import defectController from '../controllers/defectController.js';
+import { uploadMiddleware } from '../controllers/defectController.js';
 
-const router = Router();
+const router = express.Router();
 
-router.use(authenticateToken);
-
-router.get('/', getAllDefects);
-router.get('/:id', getDefectById);
-router.post('/', createDefect);
-router.put('/:id', updateDefect);
-router.delete('/:id', deleteDefect);
-router.post('/:id/comments', addComment);
-router.post('/:id/attachments', upload.single('file'), uploadAttachment);
+router.get('/', defectController.getAll);
+router.get('/:id', defectController.getById);
+router.post('/', defectController.create);
+router.put('/:id', defectController.update);
+router.delete('/:id', defectController.delete);
+router.post('/:id/comments', defectController.addComment);
+router.post('/:id/attachments', uploadMiddleware, defectController.uploadAttachment);
+router.get('/:id/attachments', defectController.getAttachments);
 
 export default router;

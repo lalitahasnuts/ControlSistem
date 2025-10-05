@@ -1,413 +1,240 @@
 import { Request, Response } from 'express';
-import { defects, projects, users, comments, attachments, generateId, findDefectById } from '../utils/storage.js';
-import { Defect, DefectStatus, Priority, Comment, Attachment } from '../models/types.js';
+import { PrismaClient } from '@prisma/client';
 import multer from 'multer';
-import path from 'path';
 
-// Настройка multer для загрузки файлов
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(process.cwd(), 'uploads'));
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+const prisma = new PrismaClient();
+
+// Простая конфигурация multer без diskStorage
+const upload = multer({ 
+  dest: 'uploads/',
+  limits: {
+    fileSize: 10 * 1024 * 1024,
   }
 });
 
-export const upload = multer({ storage });
+export const uploadMiddleware = upload.single('file');
 
-export const getAllDefects = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { search, status, priority, projectId } = req.query;
-    
-    let filteredDefects = defects;
-
-    // Применяем фильтры
-    if (search) {
-      const searchLower = (search as string).toLowerCase();
-      filteredDefects = filteredDefects.filter(defect =>
-        defect.title.toLowerCase().includes(searchLower) ||
-        defect.description.toLowerCase().includes(searchLower)
-      );
+export const defectController = {
+  async getAll(req: Request, res: Response): Promise<Response> {
+    try {
+      const defects = await prisma.defect.findMany({
+        include: {
+          project: true,
+          reporter: true,
+          assignee: true,
+          comments: true,
+          attachments: true,
+        },
+      });
+      return res.json(defects);
+    } catch (error) {
+      console.error('Error fetching defects:', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
+  },
 
-    if (status) {
-      filteredDefects = filteredDefects.filter(defect => defect.status === status);
+  async getById(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const defect = await prisma.defect.findUnique({
+        where: { id },
+        include: {
+          project: true,
+          reporter: true,
+          assignee: true,
+          comments: {
+            include: {
+              author: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+          attachments: {
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+        },
+      });
+
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+
+      return res.json(defect);
+    } catch (error) {
+      console.error('Error fetching defect:', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
+  },
 
-    if (priority) {
-      filteredDefects = filteredDefects.filter(defect => defect.priority === priority);
+  async create(req: Request, res: Response): Promise<Response> {
+    try {
+      const { title, description, projectId, priority, assigneeId, dueDate } = req.body;
+      
+      // Валидация обязательных полей
+      if (!title || !description || !projectId) {
+        return res.status(400).json({ error: 'Title, description and projectId are required' });
+      }
+      
+      const defect = await prisma.defect.create({
+        data: {
+          title,
+          description,
+          projectId,
+          priority: priority || 'medium',
+          assigneeId: assigneeId || null,
+          reporterId: 'temp-user-id', // TODO: заменить на реальный ID из аутентификации
+          dueDate: dueDate ? new Date(dueDate) : null,
+          status: 'new',
+        },
+        include: {
+          project: true,
+          reporter: true,
+          assignee: true,
+        },
+      });
+
+      return res.status(201).json(defect);
+    } catch (error) {
+      console.error('Error creating defect:', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
+  },
 
-    if (projectId) {
-      filteredDefects = filteredDefects.filter(defect => defect.projectId === projectId);
+  async update(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const updateData: any = {};
+
+      if (req.body.title) updateData.title = req.body.title;
+      if (req.body.description) updateData.description = req.body.description;
+      if (req.body.projectId) updateData.projectId = req.body.projectId;
+      if (req.body.priority) updateData.priority = req.body.priority;
+      if (req.body.status) updateData.status = req.body.status;
+      if (req.body.assigneeId) updateData.assigneeId = req.body.assigneeId;
+      if (req.body.dueDate) updateData.dueDate = new Date(req.body.dueDate);
+
+      // Проверяем, есть ли что обновлять
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ error: 'No data to update' });
+      }
+
+      const defect = await prisma.defect.update({
+        where: { id },
+        data: updateData,
+        include: {
+          project: true,
+          reporter: true,
+          assignee: true,
+        },
+      });
+
+      return res.json(defect);
+    } catch (error) {
+      console.error('Error updating defect:', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
+  },
 
-    // Добавляем связанные данные
-    const defectsWithRelations = filteredDefects.map(defect => ({
-      ...defect,
-      project: projects.find(p => p.id === defect.projectId),
-      assignee: users.find(u => u.id === defect.assigneeId),
-      reporter: users.find(u => u.id === defect.reporterId),
-      comments: comments.filter(c => c.defectId === defect.id),
-      attachments: attachments.filter(a => a.defectId === defect.id)
-    }));
+  async delete(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      await prisma.defect.delete({ where: { id } });
+      return res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting defect:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
 
-    res.json(defectsWithRelations);
-  } catch (error) {
-    console.error('Get all defects error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
+  async addComment(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      const { content } = req.body;
+
+      if (!content || content.trim() === '') {
+        return res.status(400).json({ error: 'Comment content is required' });
+      }
+
+      const comment = await prisma.comment.create({
+        data: {
+          content: content.trim(),
+          defectId: id,
+          authorId: 'temp-user-id', // TODO: заменить на реальный ID
+        },
+        include: {
+          author: true,
+        },
+      });
+
+      return res.status(201).json(comment);
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+  async uploadAttachment(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+      }
+
+      // Проверяем существование дефекта
+      const defect = await prisma.defect.findUnique({
+        where: { id }
+      });
+
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+
+      const attachment = await prisma.attachment.create({
+        data: {
+          originalName: req.file.originalname,
+          filename: req.file.filename,
+          path: req.file.path,
+          size: req.file.size,
+          defectId: id,
+          uploadedById: 'temp-user-id', // TODO: заменить на реальный ID
+        },
+      });
+
+      return res.status(201).json(attachment);
+    } catch (error) {
+      console.error('Error uploading attachment:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
+
+  async getAttachments(req: Request, res: Response): Promise<Response> {
+    try {
+      const { id } = req.params;
+      
+      // Проверяем существование дефекта
+      const defect = await prisma.defect.findUnique({
+        where: { id }
+      });
+
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+
+      const attachments = await prisma.attachment.findMany({
+        where: { defectId: id },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      return res.json(attachments);
+    } catch (error) {
+      console.error('Error fetching attachments:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  },
 };
 
-export const getDefectById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID дефекта обязателен' 
-      });
-      return;
-    }
-
-    const defect = findDefectById(id);
-    
-    if (!defect) {
-      res.status(404).json({ 
-        success: false, 
-        message: 'Дефект не найден' 
-      });
-      return;
-    }
-
-    const defectWithRelations = {
-      ...defect,
-      project: projects.find(p => p.id === defect.projectId),
-      assignee: users.find(u => u.id === defect.assigneeId),
-      reporter: users.find(u => u.id === defect.reporterId),
-      comments: comments.filter(c => c.defectId === defect.id),
-      attachments: attachments.filter(a => a.defectId === defect.id)
-    };
-
-    res.json(defectWithRelations);
-  } catch (error) {
-    console.error('Get defect by id error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const createDefect = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { title, description, priority, projectId, assigneeId, dueDate } = req.body;
-
-    if (!title || !description || !priority || !projectId || !assigneeId || !dueDate) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'Все поля обязательны' 
-      });
-      return;
-    }
-
-    const reporterId = (req as any).user?.userId;
-
-    if (!reporterId) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID репортера обязателен' 
-      });
-      return;
-    }
-
-    const newDefect: Defect = {
-      id: generateId(),
-      title,
-      description,
-      priority: priority as Priority,
-      status: DefectStatus.NEW,
-      projectId,
-      assigneeId,
-      reporterId,
-      dueDate,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      attachments: []
-    };
-
-    defects.push(newDefect);
-
-    const defectWithRelations = {
-      ...newDefect,
-      project: projects.find(p => p.id === projectId),
-      assignee: users.find(u => u.id === assigneeId),
-      reporter: users.find(u => u.id === reporterId),
-      comments: [],
-      attachments: []
-    };
-
-    res.status(201).json(defectWithRelations);
-  } catch (error) {
-    console.error('Create defect error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const updateDefect = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID дефекта обязателен' 
-      });
-      return;
-    }
-
-    const { title, description, priority, status, projectId, assigneeId, dueDate } = req.body;
-    
-    const defectIndex = defects.findIndex(d => d.id === id);
-    if (defectIndex === -1) {
-      res.status(404).json({ 
-        success: false, 
-        message: 'Дефект не найден' 
-      });
-      return;
-    }
-
-    const existingDefect = defects[defectIndex];
-    if (!existingDefect) {
-      res.status(404).json({ 
-        success: false, 
-        message: 'Дефект не найден' 
-      });
-      return;
-    }
-
-    // Обновляем поля
-    if (title) existingDefect.title = title;
-    if (description) existingDefect.description = description;
-    if (priority) existingDefect.priority = priority as Priority;
-    if (status) existingDefect.status = status as DefectStatus;
-    if (projectId) existingDefect.projectId = projectId;
-    if (assigneeId) existingDefect.assigneeId = assigneeId;
-    if (dueDate) existingDefect.dueDate = dueDate;
-
-    existingDefect.updatedAt = new Date().toISOString();
-
-    const defectWithRelations = {
-      ...existingDefect,
-      project: projects.find(p => p.id === existingDefect.projectId),
-      assignee: users.find(u => u.id === existingDefect.assigneeId),
-      reporter: users.find(u => u.id === existingDefect.reporterId),
-      comments: comments.filter(c => c.defectId === id),
-      attachments: attachments.filter(a => a.defectId === id)
-    };
-
-    res.json(defectWithRelations);
-  } catch (error) {
-    console.error('Update defect error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const deleteDefect = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID дефекта обязателен' 
-      });
-      return;
-    }
-
-    const defectIndex = defects.findIndex(d => d.id === id);
-    if (defectIndex === -1) {
-      res.status(404).json({ 
-        success: false, 
-        message: 'Дефект не найден' 
-      });
-      return;
-    }
-
-    defects.splice(defectIndex, 1);
-
-    // Удаляем связанные комментарии и вложения
-    const commentIndices = comments
-      .map((c, index) => c.defectId === id ? index : -1)
-      .filter(index => index !== -1)
-      .reverse();
-    
-    commentIndices.forEach(index => comments.splice(index, 1));
-
-    const attachmentIndices = attachments
-      .map((a, index) => a.defectId === id ? index : -1)
-      .filter(index => index !== -1)
-      .reverse();
-    
-    attachmentIndices.forEach(index => attachments.splice(index, 1));
-
-    res.json({ 
-      success: true, 
-      message: 'Дефект успешно удален' 
-    });
-  } catch (error) {
-    console.error('Delete defect error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const addComment = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID дефекта обязателен' 
-      });
-      return;
-    }
-
-    const { content } = req.body;
-
-    if (!content) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'Текст комментария обязателен' 
-      });
-      return;
-    }
-
-    const defect = findDefectById(id);
-    if (!defect) {
-      res.status(404).json({ 
-        success: false, 
-        message: 'Дефект не найден' 
-      });
-      return;
-    }
-
-    const authorId = (req as any).user?.userId;
-
-    if (!authorId) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID автора обязателен' 
-      });
-      return;
-    }
-
-    const newComment: Comment = {
-      id: generateId(),
-      content,
-      defectId: id,
-      authorId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    comments.push(newComment);
-
-    const commentWithAuthor = {
-      ...newComment,
-      author: users.find(u => u.id === authorId)
-    };
-
-    res.status(201).json(commentWithAuthor);
-  } catch (error) {
-    console.error('Add comment error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
-
-export const uploadAttachment = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID дефекта обязателен' 
-      });
-      return;
-    }
-
-    const file = req.file;
-
-    if (!file) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'Файл обязателен' 
-      });
-      return;
-    }
-
-    const defect = findDefectById(id);
-    if (!defect) {
-      res.status(404).json({ 
-        success: false, 
-        message: 'Дефект не найден' 
-      });
-      return;
-    }
-
-    const uploadedById = (req as any).user?.userId;
-
-    if (!uploadedById) {
-      res.status(400).json({ 
-        success: false, 
-        message: 'ID пользователя обязателен' 
-      });
-      return;
-    }
-
-    const newAttachment: Attachment = {
-      id: generateId(),
-      filename: file.filename,
-      originalName: file.originalname,
-      mimeType: file.mimetype,
-      size: file.size,
-      defectId: id,
-      uploadedById,
-      createdAt: new Date().toISOString()
-    };
-
-    attachments.push(newAttachment);
-
-    const attachmentWithUser = {
-      ...newAttachment,
-      uploadedBy: users.find(u => u.id === uploadedById)
-    };
-
-    res.status(201).json(attachmentWithUser);
-  } catch (error) {
-    console.error('Upload attachment error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка сервера' 
-    });
-  }
-};
+export default defectController;
