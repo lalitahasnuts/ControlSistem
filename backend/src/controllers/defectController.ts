@@ -1,32 +1,30 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import multer from 'multer';
+import { 
+  initialDefects, 
+  initialComments, 
+  initialAttachments,
+  storage 
+} from '../utils/storage.js';
+import { Defect, Comment, Attachment, DefectStatus, Priority } from '../models/types.js';
 
-const prisma = new PrismaClient();
-
-// Простая конфигурация multer без diskStorage
-const upload = multer({ 
-  dest: 'uploads/',
-  limits: {
-    fileSize: 10 * 1024 * 1024,
-  }
-});
-
-export const uploadMiddleware = upload.single('file');
+let defects = [...initialDefects];
+let comments = [...initialComments];
+let attachments = [...initialAttachments];
 
 export const defectController = {
   async getAll(req: Request, res: Response): Promise<Response> {
     try {
-      const defects = await prisma.defect.findMany({
-        include: {
-          project: true,
-          reporter: true,
-          assignee: true,
-          comments: true,
-          attachments: true,
-        },
-      });
-      return res.json(defects);
+      // Получаем дефекты с дополнительной информацией
+      const defectsWithDetails = defects.map(defect => ({
+        ...defect,
+        project: storage.getProjects().find(p => p.id === defect.projectId),
+        reporter: storage.getUsers().find(u => u.id === defect.reporterId),
+        assignee: storage.getUsers().find(u => u.id === defect.assigneeId),
+        comments: comments.filter(c => c.defectId === defect.id),
+        attachments: attachments.filter(a => a.defectId === defect.id),
+      }));
+
+      return res.json(defectsWithDetails);
     } catch (error) {
       console.error('Error fetching defects:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -36,33 +34,34 @@ export const defectController = {
   async getById(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const defect = await prisma.defect.findUnique({
-        where: { id },
-        include: {
-          project: true,
-          reporter: true,
-          assignee: true,
-          comments: {
-            include: {
-              author: true,
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
-          attachments: {
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
-        },
-      });
+      
+      // Проверяем, что id есть
+      if (!id) {
+        return res.status(400).json({ error: 'Defect ID is required' });
+      }
+
+      const defect = defects.find(d => d.id === id);
 
       if (!defect) {
         return res.status(404).json({ error: 'Defect not found' });
       }
 
-      return res.json(defect);
+      // Добавляем связанные данные
+      const defectWithDetails = {
+        ...defect,
+        project: storage.getProjects().find(p => p.id === defect.projectId),
+        reporter: storage.getUsers().find(u => u.id === defect.reporterId),
+        assignee: storage.getUsers().find(u => u.id === defect.assigneeId),
+        comments: comments
+          .filter(c => c.defectId === defect.id)
+          .map(comment => ({
+            ...comment,
+            author: storage.getUsers().find(u => u.id === comment.authorId),
+          })),
+        attachments: attachments.filter(a => a.defectId === defect.id),
+      };
+
+      return res.json(defectWithDetails);
     } catch (error) {
       console.error('Error fetching defect:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -77,26 +76,32 @@ export const defectController = {
       if (!title || !description || !projectId) {
         return res.status(400).json({ error: 'Title, description and projectId are required' });
       }
-      
-      const defect = await prisma.defect.create({
-        data: {
-          title,
-          description,
-          projectId,
-          priority: priority || 'medium',
-          assigneeId: assigneeId || null,
-          reporterId: 'temp-user-id', // TODO: заменить на реальный ID из аутентификации
-          dueDate: dueDate ? new Date(dueDate) : null,
-          status: 'new',
-        },
-        include: {
-          project: true,
-          reporter: true,
-          assignee: true,
-        },
-      });
 
-      return res.status(201).json(defect);
+      // Проверяем существование проекта
+      const project = storage.getProjects().find(p => p.id === projectId);
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+
+      const newDefect: Defect = {
+        id: Date.now().toString(),
+        title,
+        description,
+        projectId,
+        priority: priority || Priority.MEDIUM,
+        assigneeId: assigneeId || '',
+        reporterId: '1', // TODO: Заменить на ID текущего пользователя
+        status: DefectStatus.NEW,
+        dueDate: dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // +7 дней по умолчанию
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        attachments: [],
+      };
+
+      defects.push(newDefect);
+      storage.setDefects(defects);
+
+      return res.status(201).json(newDefect);
     } catch (error) {
       console.error('Error creating defect:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -106,32 +111,27 @@ export const defectController = {
   async update(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      const updateData: any = {};
-
-      if (req.body.title) updateData.title = req.body.title;
-      if (req.body.description) updateData.description = req.body.description;
-      if (req.body.projectId) updateData.projectId = req.body.projectId;
-      if (req.body.priority) updateData.priority = req.body.priority;
-      if (req.body.status) updateData.status = req.body.status;
-      if (req.body.assigneeId) updateData.assigneeId = req.body.assigneeId;
-      if (req.body.dueDate) updateData.dueDate = new Date(req.body.dueDate);
-
-      // Проверяем, есть ли что обновлять
-      if (Object.keys(updateData).length === 0) {
-        return res.status(400).json({ error: 'No data to update' });
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Defect ID is required' });
       }
 
-      const defect = await prisma.defect.update({
-        where: { id },
-        data: updateData,
-        include: {
-          project: true,
-          reporter: true,
-          assignee: true,
-        },
-      });
+      const updateData = req.body;
 
-      return res.json(defect);
+      const defectIndex = defects.findIndex(d => d.id === id);
+      if (defectIndex === -1) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+
+      defects[defectIndex] = {
+        ...defects[defectIndex],
+        ...updateData,
+        updatedAt: new Date().toISOString(),
+      };
+
+      storage.setDefects(defects);
+
+      return res.json(defects[defectIndex]);
     } catch (error) {
       console.error('Error updating defect:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -141,7 +141,25 @@ export const defectController = {
   async delete(req: Request, res: Response): Promise<Response> {
     try {
       const { id } = req.params;
-      await prisma.defect.delete({ where: { id } });
+      
+      if (!id) {
+        return res.status(400).json({ error: 'Defect ID is required' });
+      }
+
+      const defectIndex = defects.findIndex(d => d.id === id);
+      if (defectIndex === -1) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
+
+      defects = defects.filter(d => d.id !== id);
+      // Также удаляем связанные комментарии и вложения
+      comments = comments.filter(c => c.defectId !== id);
+      attachments = attachments.filter(a => a.defectId !== id);
+
+      storage.setDefects(defects);
+      storage.setComments(comments);
+      storage.setAttachments(attachments);
+
       return res.status(204).send();
     } catch (error) {
       console.error('Error deleting defect:', error);
@@ -154,22 +172,39 @@ export const defectController = {
       const { id } = req.params;
       const { content } = req.body;
 
+      if (!id) {
+        return res.status(400).json({ error: 'Defect ID is required' });
+      }
+
       if (!content || content.trim() === '') {
         return res.status(400).json({ error: 'Comment content is required' });
       }
 
-      const comment = await prisma.comment.create({
-        data: {
-          content: content.trim(),
-          defectId: id,
-          authorId: 'temp-user-id', // TODO: заменить на реальный ID
-        },
-        include: {
-          author: true,
-        },
-      });
+      // Проверяем существование дефекта
+      const defect = defects.find(d => d.id === id);
+      if (!defect) {
+        return res.status(404).json({ error: 'Defect not found' });
+      }
 
-      return res.status(201).json(comment);
+      const newComment: Comment = {
+        id: Date.now().toString(),
+        content: content.trim(),
+        defectId: id, // Теперь TypeScript знает, что id - строка
+        authorId: '1', // TODO: Заменить на ID текущего пользователя
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      comments.push(newComment);
+      storage.setComments(comments);
+
+      // Возвращаем комментарий с информацией об авторе
+      const commentWithAuthor = {
+        ...newComment,
+        author: storage.getUsers().find(u => u.id === newComment.authorId),
+      };
+
+      return res.status(201).json(commentWithAuthor);
     } catch (error) {
       console.error('Error adding comment:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -180,31 +215,35 @@ export const defectController = {
     try {
       const { id } = req.params;
       
+      if (!id) {
+        return res.status(400).json({ error: 'Defect ID is required' });
+      }
+      
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
       }
 
       // Проверяем существование дефекта
-      const defect = await prisma.defect.findUnique({
-        where: { id }
-      });
-
+      const defect = defects.find(d => d.id === id);
       if (!defect) {
         return res.status(404).json({ error: 'Defect not found' });
       }
 
-      const attachment = await prisma.attachment.create({
-        data: {
-          originalName: req.file.originalname,
-          filename: req.file.filename,
-          path: req.file.path,
-          size: req.file.size,
-          defectId: id,
-          uploadedById: 'temp-user-id', // TODO: заменить на реальный ID
-        },
-      });
+      const newAttachment: Attachment = {
+        id: Date.now().toString(),
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        mimeType: req.file.mimetype,
+        size: req.file.size,
+        defectId: id, // Теперь TypeScript знает, что id - строка
+        uploadedById: '1', // TODO: Заменить на ID текущего пользователя
+        createdAt: new Date().toISOString(),
+      };
 
-      return res.status(201).json(attachment);
+      attachments.push(newAttachment);
+      storage.setAttachments(attachments);
+
+      return res.status(201).json(newAttachment);
     } catch (error) {
       console.error('Error uploading attachment:', error);
       return res.status(500).json({ error: 'Internal server error' });
@@ -215,26 +254,39 @@ export const defectController = {
     try {
       const { id } = req.params;
       
-      // Проверяем существование дефекта
-      const defect = await prisma.defect.findUnique({
-        where: { id }
-      });
+      if (!id) {
+        return res.status(400).json({ error: 'Defect ID is required' });
+      }
 
+      // Проверяем существование дефекта
+      const defect = defects.find(d => d.id === id);
       if (!defect) {
         return res.status(404).json({ error: 'Defect not found' });
       }
 
-      const attachments = await prisma.attachment.findMany({
-        where: { defectId: id },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      return res.json(attachments);
+      const defectAttachments = attachments.filter(a => a.defectId === id);
+      return res.json(defectAttachments);
     } catch (error) {
       console.error('Error fetching attachments:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   },
+};
+
+// Упрощенный middleware для загрузки файлов
+export const uploadMiddleware = (req: any, res: any, next: any) => {
+  // Простая имитация загрузки файла
+  if (req.file) {
+    // Добавляем необходимые поля для req.file
+    req.file = {
+      originalname: req.file.originalname || 'file',
+      filename: `file_${Date.now()}`,
+      mimetype: req.file.mimetype || 'application/octet-stream',
+      size: req.file.size || 0,
+      path: `/uploads/file_${Date.now()}`,
+    };
+  }
+  next();
 };
 
 export default defectController;
