@@ -16,6 +16,7 @@ import DefectDetail from './components/DefectDetail';
 import UserProfile from './components/UserProfile';
 import { useAuth } from './hooks/useAuth';
 import './App.css';
+import { authService } from './services/authService';
 
 const { Content } = Layout;
 
@@ -26,8 +27,14 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Компонент для защищенных маршрутов
 /*const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
+
+  if (loading) {
+    return <div>Загрузка...</div>; // Или компонент загрузки
+  }
+
   return currentUser ? <>{children}</> : <Navigate to="/login" />;
+};
 };*/
 
 // Компонент макета с Header и Sidebar
@@ -129,6 +136,13 @@ function App() {
       </Router>
     </AuthProvider>
   );
+}
+
+// Проверяем валидность токена при запуске приложения
+const token = localStorage.getItem('authToken');
+if (token) {
+  // Можно добавить запрос для проверки валидности токена
+  authService.setAuthToken(token);
 }
 
 export default App;

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
   
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -13,13 +14,16 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      alert('Ошибка входа. Проверьте данные.');
+      const errorMessage = error.response?.data?.message || error.message || 'Ошибка входа. Проверьте данные.';
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -29,6 +33,8 @@ const Login: React.FC = () => {
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Вход в систему</h2>
+        
+        {error && <div className="error-message" style={{color: 'red', marginBottom: '15px'}}>{error}</div>}
         
         <div className="form-group">
           <label>Email:</label>
