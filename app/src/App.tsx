@@ -21,12 +21,12 @@ import { authService } from './services/authService';
 const { Content } = Layout;
 
 // Временный компонент - всегда разрешаем доступ
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+/*const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>; // Всегда показываем содержимое
-};
+};*/
 
 // Компонент для защищенных маршрутов
-/*const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, loading } = useAuth();
 
   if (loading) {
@@ -35,7 +35,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   return currentUser ? <>{children}</> : <Navigate to="/login" />;
 };
-};*/
 
 // Компонент макета с Header и Sidebar
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
