@@ -44,3 +44,13 @@
 ### Тесты
 <img width="539" height="599" alt="image" src="https://github.com/user-attachments/assets/2e477e2e-7ec4-4bce-afe2-77cbe5035584" />
 
+---
+
+### Запуск приложения
+1. Выбрать ветку front
+2. npm install
+3. cd backend
+4. npm run dev
+5. cd app
+6. npm start
+
