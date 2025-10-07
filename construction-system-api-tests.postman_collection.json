@@ -1,0 +1,642 @@
+{
+    "info": {
+      "name": "Строительная система - API тесты",
+      "description": "Полный набор тестов для API системы управления строительными проектами",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+      {
+        "key": "baseUrl",
+        "value": "http://localhost:5000/api",
+        "type": "string"
+      },
+      {
+        "key": "authToken",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "userId",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "projectId",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "defectId",
+        "value": "",
+        "type": "string"
+      }
+    ],
+    "item": [
+      {
+        "name": "🔐 Аутентификация",
+        "item": [
+          {
+            "name": "Регистрация пользователя",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\",\n  \"firstName\": \"Иван\",\n  \"lastName\": \"Петров\",\n  \"role\": \"engineer\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/register",
+                "host": ["{{baseUrl}}"],
+                "path": ["auth", "register"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Response has token and user\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.success).to.be.true;",
+                    "    pm.expect(jsonData.token).to.be.a('string');",
+                    "    pm.expect(jsonData.user).to.be.an('object');",
+                    "    pm.expect(jsonData.user.email).to.equal('test@example.com');",
+                    "});",
+                    "",
+                    "// Сохраняем токен для последующих запросов",
+                    "pm.collectionVariables.set(\"authToken\", pm.response.json().token);",
+                    "pm.collectionVariables.set(\"userId\", pm.response.json().user.id);"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Вход пользователя",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/auth/login",
+                "host": ["{{baseUrl}}"],
+                "path": ["auth", "login"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Successful login\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.success).to.be.true;",
+                    "    pm.expect(jsonData.token).to.be.a('string');",
+                    "    pm.expect(jsonData.user.email).to.equal('test@example.com');",
+                    "});",
+                    "",
+                    "// Сохраняем токен",
+                    "pm.collectionVariables.set(\"authToken\", pm.response.json().token);"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Получение текущего пользователя",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/auth/me",
+                "host": ["{{baseUrl}}"],
+                "path": ["auth", "me"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"User data returned\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.success).to.be.true;",
+                    "    pm.expect(jsonData.user).to.be.an('object');",
+                    "    pm.expect(jsonData.user.email).to.equal('test@example.com');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "👥 Управление пользователями",
+        "item": [
+          {
+            "name": "Получение всех пользователей",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/users",
+                "host": ["{{baseUrl}}"],
+                "path": ["users"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Users array returned\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData).to.be.an('array');",
+                    "    pm.expect(jsonData.length).to.be.greaterThan(0);",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Создание нового пользователя",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"email\": \"manager@company.com\",\n  \"password\": \"Manager123!\",\n  \"firstName\": \"Анна\",\n  \"lastName\": \"Сидорова\",\n  \"role\": \"manager\",\n  \"isActive\": true\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/users",
+                "host": ["{{baseUrl}}"],
+                "path": ["users"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 201\", function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "",
+                    "pm.test(\"User created successfully\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.email).to.equal('manager@company.com');",
+                    "    pm.expect(jsonData.role).to.equal('manager');",
+                    "    pm.expect(jsonData.id).to.be.a('string');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "🏗️ Управление проектами",
+        "item": [
+          {
+            "name": "Получение всех проектов",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/projects",
+                "host": ["{{baseUrl}}"],
+                "path": ["projects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Projects array returned\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData).to.be.an('array');",
+                    "    if (jsonData.length > 0) {",
+                    "        pm.collectionVariables.set(\"projectId\", jsonData[0].id);",
+                    "    }",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Создание нового проекта",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"ЖК Современный\",\n  \"description\": \"Строительство жилого комплекса в центре города\",\n  \"address\": \"ул. Центральная, 123\",\n  \"startDate\": \"2024-03-01\",\n  \"endDate\": \"2024-12-31\",\n  \"status\": \"planned\",\n  \"managerId\": \"{{userId}}\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/projects",
+                "host": ["{{baseUrl}}"],
+                "path": ["projects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 201\", function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "",
+                    "pm.test(\"Project created successfully\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.name).to.equal('ЖК Современный');",
+                    "    pm.expect(jsonData.status).to.equal('planned');",
+                    "    pm.expect(jsonData.id).to.be.a('string');",
+                    "    pm.collectionVariables.set(\"projectId\", jsonData.id);",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Получение проекта по ID",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/projects/{{projectId}}",
+                "host": ["{{baseUrl}}"],
+                "path": ["projects", "{{projectId}}"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Project details returned\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.id).to.equal(pm.collectionVariables.get(\"projectId\"));",
+                    "    pm.expect(jsonData.name).to.be.a('string');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "🐛 Управление дефектами",
+        "item": [
+          {
+            "name": "Создание дефекта",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Трещина в несущей стене\",\n  \"description\": \"Обнаружена вертикальная трещина шириной 2мм в несущей стене на 3 этаже\",\n  \"priority\": \"high\",\n  \"status\": \"new\",\n  \"projectId\": \"{{projectId}}\",\n  \"assigneeId\": \"{{userId}}\",\n  \"reporterId\": \"{{userId}}\",\n  \"dueDate\": \"2024-02-15\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/defects",
+                "host": ["{{baseUrl}}"],
+                "path": ["defects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 201\", function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "",
+                    "pm.test(\"Defect created successfully\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.title).to.equal('Трещина в несущей стене');",
+                    "    pm.expect(jsonData.priority).to.equal('high');",
+                    "    pm.expect(jsonData.id).to.be.a('string');",
+                    "    pm.collectionVariables.set(\"defectId\", jsonData.id);",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Получение всех дефектов",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/defects",
+                "host": ["{{baseUrl}}"],
+                "path": ["defects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Defects array returned\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData).to.be.an('array');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Добавление комментария к дефекту",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"content\": \"Необходимо срочно устранить дефект. Требуется оценка структурного инженера.\"\n}"
+              },
+              "url": {
+                "raw": "{{baseUrl}}/defects/{{defectId}}/comments",
+                "host": ["{{baseUrl}}"],
+                "path": ["defects", "{{defectId}}", "comments"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 201\", function () {",
+                    "    pm.response.to.have.status(201);",
+                    "});",
+                    "",
+                    "pm.test(\"Comment added successfully\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.content).to.include('Необходимо срочно устранить');",
+                    "    pm.expect(jsonData.id).to.be.a('string');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "📊 Отчеты и аналитика",
+        "item": [
+          {
+            "name": "Получение отчета по дефектам",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/reports/defects",
+                "host": ["{{baseUrl}}"],
+                "path": ["reports", "defects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"Report data returned\", function () {",
+                    "    var jsonData = pm.response.json();",
+                    "    pm.expect(jsonData.totalDefects).to.be.a('number');",
+                    "    pm.expect(jsonData.defectsByStatus).to.be.an('array');",
+                    "    pm.expect(jsonData.defectsByPriority).to.be.an('array');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Экспорт отчета в CSV",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{authToken}}"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/reports/export/csv",
+                "host": ["{{baseUrl}}"],
+                "path": ["reports", "export", "csv"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 200\", function () {",
+                    "    pm.response.to.have.status(200);",
+                    "});",
+                    "",
+                    "pm.test(\"CSV file returned\", function () {",
+                    "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv');",
+                    "    pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment');",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "🛡️ Тесты безопасности",
+        "item": [
+          {
+            "name": "Доступ без авторизации",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{baseUrl}}/projects",
+                "host": ["{{baseUrl}}"],
+                "path": ["projects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 401\", function () {",
+                    "    pm.response.to.have.status(401);",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Доступ с невалидным токеном",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer invalid_token_123"
+                }
+              ],
+              "url": {
+                "raw": "{{baseUrl}}/projects",
+                "host": ["{{baseUrl}}"],
+                "path": ["projects"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "pm.test(\"Status code is 401\", function () {",
+                    "    pm.response.to.have.status(401);",
+                    "});"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "event": [
+      {
+        "listen": "prerequest",
+        "script": {
+          "type": "text/javascript",
+          "exec": [
+            "console.log('Запуск тестов API строительной системы');"
+          ]
+        }
+      }
+    ]
+  }
