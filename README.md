@@ -35,6 +35,11 @@
 6. **Безопасность**: Логирование действий, регулярное резервное копирование БД и контроль прав доступа для всех операций.
 
 ---
+### UseCase диаграммы
+<img width="688" height="359" alt="image" src="https://github.com/user-attachments/assets/3d275f5b-d7d1-4239-9fff-d0baa5cd1962" />
+
+
+---
 
 ### Тесты
 <img width="539" height="599" alt="image" src="https://github.com/user-attachments/assets/2e477e2e-7ec4-4bce-afe2-77cbe5035584" />
